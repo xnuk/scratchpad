@@ -4,8 +4,6 @@ on:
   push:
     branches:
     - node-corepack
-  workflow_dispatch:
-    inputs: {}
 
 jobs:
   build:
