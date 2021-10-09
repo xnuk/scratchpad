@@ -1,0 +1,10 @@
+[package]
+name = "libmsi"
+version = "0.1.0"
+edition = "2018"
+
+[build-dependencies.bindgen]
+version = "^0.59.1"
+default-features = false
+# static or runtime
+features = ["runtime"]
