@@ -1,0 +1,8 @@
+[package]
+name = "msi-unpack"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+cfb = "^0.6.1"
+nom = "^7.0.0"
