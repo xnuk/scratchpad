@@ -1,5 +1,7 @@
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
+pub(crate) mod bindings;
+mod wrapper;
+pub use crate::wrapper::*;
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+pub use crate::bindings::{
+	LibmsiDbFlags as DBFlags,
+};
