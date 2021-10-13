@@ -34,10 +34,10 @@ macro_rules! gpointer {
 macro_rules! ptr_check {
 	($i:ident $ptr:expr) => {{
 		let ptr = $ptr;
-		if ptr != null_mut() {
-			Some($i { ptr })
-		} else {
+		if ptr.is_null() {
 			None
+		} else {
+			Some($i { ptr })
 		}
 	}};
 }
