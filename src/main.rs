@@ -1,22 +1,43 @@
 #![cfg(unix)]
 
-use libmsi::{DBFlags, Database, Query};
+use libmsi::{DBFlags, Database};
 use std::env::args_os;
 use std::io::{self, ErrorKind};
 
 fn main() -> io::Result<()> {
-	let path = args_os()
-		.nth(1)
-		.ok_or::<io::Error>(ErrorKind::InvalidInput.into())?;
+	let (path, count) = {
+		let mut args = args_os().skip(1);
 
-	let database = Database::new(path, DBFlags::READONLY).unwrap();
-	let mut query = Query::new(&database, "SELECT * FROM `Directory`").unwrap();
+		let path = args
+			.next()
+			.ok_or::<io::Error>(ErrorKind::InvalidInput.into())?;
 
-	let foo = {
-		while let Some(record) = query.fetch() {
-			println!("{:?}", record.string(1));
-		}
+		let count = args
+			.next()
+			.and_then(|x| x.to_string_lossy().parse().ok())
+			.unwrap_or(1u32);
+
+		(path, count)
 	};
+
+	// loop for memory leak detect
+	for _ in 0..count {
+		let database = Database::new(&path, DBFlags::READONLY).unwrap();
+
+		{
+			let query = database
+				.query_iter("select `FileName`, `Component_` from `File`")
+				.unwrap();
+
+			let mut i = 0u32;
+			for _record in query {
+				// println!("{:?}", record);
+				i += 1;
+			}
+
+			println!("{:?}", i);
+		}
+	}
 
 	Ok(())
 }

@@ -5,8 +5,8 @@ use bindgen::{
 
 use std::{
 	convert::AsRef,
-	fs::OpenOptions,
-	io::{self, ErrorKind, Write},
+	fs::File,
+	io::{self, Write},
 	iter::{FromIterator, IntoIterator},
 };
 
@@ -101,6 +101,7 @@ fn compile() -> Option<String> {
 		.allowlist_var(LIBMSI_REGEX)
 		.blocklist_function("libmsi_.*_get_type")
 		.blocklist_function("libmsi_.*_error_quark")
+		.blocklist_function("libmsi_query_get_error")
 		.blocklist_type("_?Libmsi.*Class")
 		.blocklist_type("_?GObject.*")
 		.blocklist_type("_?GValue")
@@ -201,22 +202,8 @@ fn post_compile() -> Option<String> {
 }
 
 fn main() -> io::Result<()> {
-	println!("cargo:rerun-if-changed={}", BINDING);
-
-	let file = OpenOptions::new()
-		.write(true)
-		.create_new(true)
-		.open(BINDING);
-
-	if let Err(err) = file {
-		return if err.kind() == ErrorKind::AlreadyExists {
-			Ok(())
-		} else {
-			Err(err)
-		};
-	}
-
-	let mut file = file?;
+	// println!("cargo:rerun-if-changed={}", BINDING);
+	println!("cargo:rerun-if-changed=build.rs");
 
 	let source = post_compile().expect("Compile failed");
 
@@ -228,6 +215,7 @@ fn main() -> io::Result<()> {
 	.join(";\n")
 		+ ";\n";
 
+	let mut file = File::create(BINDING)?;
 	file.write(header.as_bytes())?;
 	file.write_all(source.as_bytes())?;
 	Ok(())
