@@ -272,9 +272,7 @@ dependencies = [
  "gio-sys",
  "glib",
  "glib-sys",
- "proc-macro2",
  "quote",
- "regex",
  "syn",
 ]
 
