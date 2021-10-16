@@ -1,5 +1,7 @@
 #[allow(dead_code)]
-pub(crate) mod bindings;
+pub(crate) mod bindings {
+	include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
 
 mod wrapper;
 pub use crate::wrapper::*;

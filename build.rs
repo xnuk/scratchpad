@@ -11,9 +11,11 @@ use syn::{
 
 use std::{
 	convert::AsRef,
+	env::var_os,
 	fs::File,
 	io::{self, Write},
 	iter::{FromIterator, IntoIterator},
+	path::PathBuf,
 };
 
 use quote::ToTokens;
@@ -24,7 +26,6 @@ macro_rules! reserved {
 }
 
 const LIBMSI_REGEX: &'static str = "(?i).*libmsi.*";
-const BINDING: &'static str = "./src/bindings.rs";
 
 #[derive(Debug)]
 struct Callback;
@@ -221,13 +222,10 @@ fn compile() -> Option<String> {
 }
 
 fn main() -> io::Result<()> {
-	// println!("cargo:rerun-if-changed={}", BINDING);
 	println!("cargo:rerun-if-changed=build.rs");
 
 	let source =
 		post2(&compile().expect("Compile failed")).expect("Compile failed");
-	// let source = include_str!("../foo.rs");
-	// let source = post2(&source.to_owned()).expect("Compile failed");
 
 	let header = vec![
 		"use ::std::os::raw::c_char",
@@ -237,8 +235,8 @@ fn main() -> io::Result<()> {
 	.join(";\n")
 		+ ";\n";
 
-	let mut file = File::create(BINDING)?;
-	// let mut file = std::io::stdout();
+	let path = PathBuf::from(var_os("OUT_DIR").unwrap()).join("bindings.rs");
+	let mut file = File::create(path)?;
 	file.write(header.as_bytes())?;
 	file.write_all(source.as_bytes())?;
 	Ok(())
