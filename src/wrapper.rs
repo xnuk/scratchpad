@@ -22,7 +22,7 @@ macro_rules! gpointer {
 				$({
 					let $ptr = self.ptr;
 					{ $body };
-				})?;
+				})?
 				unsafe {
 					g_object_unref(self.ptr as *mut GObject);
 				}
