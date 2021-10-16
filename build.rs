@@ -3,6 +3,12 @@ use bindgen::{
 	callbacks::{EnumVariantValue, ParseCallbacks},
 };
 
+use syn::{
+	parse_quote,
+	visit_mut::{self, VisitMut},
+	Ident, Item,
+};
+
 use std::{
 	convert::AsRef,
 	fs::File,
@@ -10,7 +16,7 @@ use std::{
 	iter::{FromIterator, IntoIterator},
 };
 
-use regex::Regex;
+use quote::ToTokens;
 
 macro_rules! reserved {
 	($i:ident) => {concat!(reserved!(@), stringify!($i))};
@@ -88,6 +94,86 @@ impl ParseCallbacks for Callback {
 	}
 }
 
+struct RemoveThere;
+
+impl VisitMut for RemoveThere {
+	fn visit_ident_mut(&mut self, node: &mut Ident) {
+		let name = format!("{}", node);
+
+		if let Some(name) = name.strip_prefix(reserved!(@)) {
+			*node = Ident::new(name, node.span());
+		}
+
+		visit_mut::visit_ident_mut(self, node);
+	}
+}
+
+fn post2(source: &String) -> Option<String> {
+	let mut file = syn::parse_file(source).ok()?;
+
+	macro_rules! check {
+		(($a:ident, $b:ident) as $c:path, $e:expr) => {{
+			if let $c($a) = $a {
+				if let $c($b) = $b {
+					$e
+				}
+			}
+		}};
+	}
+
+	macro_rules! remove {
+		($i:expr) => {{
+			file.items.remove($i);
+			continue;
+		}};
+	}
+
+	let mut i = 0;
+
+	while i < file.items.len() {
+		let (before, after) = file.items.split_at_mut(i);
+		let item = &mut after[0];
+
+		if let Some(last) = before.last_mut() {
+			check! {
+				(last, item) as Item::Impl,
+				if
+					last.trait_ == item.trait_ &&
+					last.self_ty == item.self_ty
+				{
+					last.items.append(&mut item.items);
+					remove!(i);
+				}
+			}
+
+			check! {
+				(last, item) as Item::ForeignMod,
+				if last.abi == item.abi {
+					last.items.append(&mut item.items);
+					remove!(i);
+				}
+			}
+		}
+
+		if let Item::Type(item) = item {
+			if format!("{}", item.ident).contains(reserved!(@)) {
+				remove!(i);
+			}
+		}
+
+		if let Item::ForeignMod(item) = item {
+			item.attrs.push(parse_quote!(
+				#[link(name = "msi")]
+			));
+		}
+		i += 1;
+	}
+
+	RemoveThere.visit_file_mut(&mut file);
+
+	Some(file.to_token_stream().to_string())
+}
+
 fn compile() -> Option<String> {
 	builder()
 		.header_contents("wrapper.h", "#include <libmsi.h>")
@@ -126,6 +212,7 @@ fn compile() -> Option<String> {
 		.bitfield_enum("LibmsiDbFlags")
 		.layout_tests(false)
 		.translate_enum_integer_types(true)
+		.rustfmt_bindings(false)
 		.use_core()
 		.parse_callbacks(Box::new(Callback))
 		.generate()
@@ -133,79 +220,14 @@ fn compile() -> Option<String> {
 		.map(|v| v.to_string())
 }
 
-fn post_compile() -> Option<String> {
-	let Lines(source) = {
-		let pubtype =
-			Regex::new(concat!("^pub type ", reserved!(@), r"\w+ = [^{};]+;$"))
-				.ok()?;
-
-		compile()?
-			.lines()
-			.filter(|x| !pubtype.is_match(*x))
-			.map(|x| x.replace(reserved!(@), ""))
-			.chain(Some(reserved!(@).to_owned()).into_iter())
-			.scan((None::<String>, false), |state, line| {
-				let (start, closed) = state;
-
-				if line == reserved!(@) {
-					let mut ret = vec![String::new()];
-
-					if *closed {
-						ret.insert(0, '}'.into());
-					}
-
-					return Some(ret);
-				}
-
-				let trimmed = line.trim();
-				if trimmed.is_empty() || line.starts_with("\t") {
-					return Some(vec![line]);
-				}
-
-				if start.is_some() && trimmed == "}" {
-					state.1 = true;
-					return Some(vec![]);
-				}
-
-				if trimmed.ends_with("{") {
-					println!("{:?} / {}", start, trimmed);
-					if let Some(start) = start {
-						if start == trimmed {
-							state.1 = false;
-							return Some(vec![]);
-						}
-					}
-
-					state.0 = Some(line.clone());
-				}
-
-				let mut ret = vec![line];
-
-				if *closed {
-					ret.insert(0, '}'.into());
-					state.1 = false;
-				}
-
-				Some(ret)
-			})
-			.flatten()
-			.flat_map(|line| {
-				if line.trim() == r#"extern "C" {"# {
-					vec![r#"#[link(name = "msi")]"#.to_owned(), line]
-				} else {
-					vec![line]
-				}
-			})
-			.collect()
-	};
-	Some(source)
-}
-
 fn main() -> io::Result<()> {
 	// println!("cargo:rerun-if-changed={}", BINDING);
 	println!("cargo:rerun-if-changed=build.rs");
 
-	let source = post_compile().expect("Compile failed");
+	let source =
+		post2(&compile().expect("Compile failed")).expect("Compile failed");
+	// let source = include_str!("../foo.rs");
+	// let source = post2(&source.to_owned()).expect("Compile failed");
 
 	let header = vec![
 		"use ::std::os::raw::c_char",
@@ -216,6 +238,7 @@ fn main() -> io::Result<()> {
 		+ ";\n";
 
 	let mut file = File::create(BINDING)?;
+	// let mut file = std::io::stdout();
 	file.write(header.as_bytes())?;
 	file.write_all(source.as_bytes())?;
 	Ok(())
