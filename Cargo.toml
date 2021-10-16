@@ -24,8 +24,3 @@ version = "^0.59.1"
 default-features = false
 # static or runtime
 features = ["runtime"]
-
-[build-dependencies.regex]
-version = "^1.5.4"
-default-features = false
-features = ["std", "unicode"]
