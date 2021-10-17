@@ -1,0 +1,15 @@
+# yaml-language-server: schema=https://json.schemastore.org/github-workflow
+name: build libmsi-bind
+
+on:
+  push:
+    branches: [libmsi-bind]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - run: sudo apt install msitools -y
+    - run: cargo build
