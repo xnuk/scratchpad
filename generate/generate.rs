@@ -4,6 +4,7 @@ use bindgen::callbacks::{EnumVariantValue, ParseCallbacks};
 use syn::visit_mut::{self, VisitMut};
 use syn::{parse_quote, ForeignItem, Ident, Item, LitStr, Type, TypePath};
 
+use std::env::args_os;
 use std::fs::File;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
@@ -243,12 +244,16 @@ fn compile() -> Option<String> {
 }
 
 fn main() -> io::Result<()> {
-	println!("cargo:rerun-if-changed=build.rs");
+	// println!("cargo:rerun-if-changed=build.rs");
+
+	let mut file: Box<dyn Write + Send + Sync + Unpin> =
+		match args_os().skip(1).next() {
+			Some(path) => Box::new(File::create(path)?),
+			None => Box::new(io::stdout()),
+		};
 
 	let source =
 		post2(&compile().expect("Compile failed")).expect("Compile failed");
-
-	let mut file = File::create("./src/bindings.rs")?;
 
 	let command = Command::new("rustfmt")
 		.args(["--edition=2018", "--emit=stdout"])
@@ -265,11 +270,12 @@ fn main() -> io::Result<()> {
 			stdin.write_all(source.as_bytes()).unwrap();
 		});
 
-		thread::spawn(move || {
+		let o = thread::spawn(move || {
 			io::copy(&mut stdout, &mut file).unwrap();
 		});
 
 		child.wait()?;
+		o.join().unwrap();
 	} else {
 		file.write_all(source.as_bytes())?;
 	}
