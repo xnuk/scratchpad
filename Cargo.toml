@@ -3,6 +3,7 @@ name = "libmsi"
 version = "0.1.0"
 edition = "2018"
 license = "AGPL-3.0-or-later"
+rust = "nightly"
 
 [dependencies]
 gio-sys = "^0.14.0"
