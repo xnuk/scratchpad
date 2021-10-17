@@ -10,6 +10,8 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::iter::{FromIterator, IntoIterator};
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::thread;
 
 use quote::ToTokens;
 
@@ -248,6 +250,11 @@ fn compile() -> Option<String> {
 		.translate_enum_integer_types(true)
 		.rustfmt_bindings(false)
 		.use_core()
+		.raw_line(stringify!(
+			use ::std::os::raw::c_char;
+			use ::gio_sys::{GCancellable, GInputStream};
+			use ::glib::ffi::{GArray, GError};
+		))
 		.parse_callbacks(Box::new(Callback))
 		.generate()
 		.ok()
@@ -260,17 +267,32 @@ fn main() -> io::Result<()> {
 	let source =
 		post2(&compile().expect("Compile failed")).expect("Compile failed");
 
-	let header = vec![
-		"use ::std::os::raw::c_char",
-		"use ::gio_sys::{GCancellable, GInputStream}",
-		"use ::glib::ffi::{GArray, GError}",
-	]
-	.join(";\n")
-		+ ";\n";
-
 	let path = PathBuf::from(var_os("OUT_DIR").unwrap()).join("bindings.rs");
-	let mut file = File::create(path)?;
-	file.write(header.as_bytes())?;
-	file.write_all(source.as_bytes())?;
+	let mut file = File::create(&path)?;
+
+	let command = Command::new("rustfmt")
+		.args(["--edition=2018", "--emit=stdout"])
+		.stdin(Stdio::piped())
+		.stdout(Stdio::piped())
+		.stderr(Stdio::null())
+		.spawn();
+
+	if let Ok(mut child) = command {
+		let mut stdin = child.stdin.take().unwrap();
+		let mut stdout = child.stdout.take().unwrap();
+
+		thread::spawn(move || {
+			stdin.write_all(source.as_bytes()).unwrap();
+		});
+
+		thread::spawn(move || {
+			io::copy(&mut stdout, &mut file).unwrap();
+		});
+
+		child.wait()?;
+	} else {
+		file.write_all(source.as_bytes())?;
+	}
+
 	Ok(())
 }
