@@ -11,6 +11,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
+    - uses: actions/cache@v2
+      with:
+        key: ${{ runner.os }}-cargo-r1-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-r1-
+        path: |
+          ~/.cargo/
+          ~/.rustup/
+
     - run: sudo apt install libmsi-dev -y
     - run: rustup default nightly
     - run: cargo build
