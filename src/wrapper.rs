@@ -5,7 +5,8 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::ptr::{null, null_mut};
 
-use crate::bindings::*;
+use crate::bindings as msi;
+
 use glib::ffi::{g_free, gpointer};
 use glib::gobject_ffi::{g_object_unref, GObject};
 
@@ -40,22 +41,22 @@ macro_rules! ptr_check {
 	}};
 }
 
-gpointer!(pub Database => *mut LibmsiDatabase);
-gpointer!(pub Query => *mut LibmsiQuery, ptr => unsafe {
-	libmsi_query_close(ptr, null_mut());
+gpointer!(pub Database => *mut msi::Database);
+gpointer!(pub Query => *mut msi::Query, ptr => unsafe {
+	msi::query_close(ptr, null_mut());
 });
-gpointer!(pub Record => *mut LibmsiRecord);
+gpointer!(pub Record => *mut msi::Record);
 
 impl Database {
 	#[must_use]
 	pub fn new<P: AsRef<Path>>(
 		path: P,
-		flags: LibmsiDbFlags,
+		flags: msi::DbFlags,
 	) -> Option<Database> {
 		let path = CString::new(path.as_ref().as_os_str().as_bytes()).ok()?;
 
 		ptr_check!(Database unsafe {
-			libmsi_database_new(path.as_ptr(), flags.0, null(), null_mut())
+			msi::database_new(path.as_ptr(), flags.0, null(), null_mut())
 		})
 	}
 
@@ -67,7 +68,7 @@ impl Database {
 	}
 
 	pub fn is_readonly(&self) -> bool {
-		unsafe { libmsi_database_is_readonly(self.ptr) }
+		unsafe { msi::database_is_readonly(self.ptr) }
 	}
 }
 
@@ -76,19 +77,19 @@ impl Query {
 		let query = CString::new(query.as_ref().as_bytes()).ok()?;
 
 		ptr_check!(Query unsafe {
-			libmsi_query_new(database.ptr, query.as_ptr(), null_mut())
+			msi::query_new(database.ptr, query.as_ptr(), null_mut())
 		})
 	}
 
 	fn fetch(&self) -> Option<Record> {
 		ptr_check!(Record unsafe {
-			libmsi_query_fetch(self.ptr, null_mut())
+			msi::query_fetch(self.ptr, null_mut())
 		})
 	}
 
-	fn column_info(&self, col: LibmsiColInfo) -> Option<Record> {
+	fn column_info(&self, col: msi::ColInfo) -> Option<Record> {
 		ptr_check!(Record unsafe {
-			libmsi_query_get_column_info(self.ptr, col, null_mut())
+			msi::query_get_column_info(self.ptr, col, null_mut())
 		})
 	}
 }
@@ -107,23 +108,23 @@ impl Record {
 	#[must_use]
 	pub fn new(count: u32) -> Option<Record> {
 		ptr_check!(Record unsafe {
-			libmsi_record_new(count)
+			msi::record_new(count)
 		})
 	}
 
 	#[must_use]
 	pub fn field_count(&self) -> u32 {
-		unsafe { libmsi_record_get_field_count(self.ptr) }
+		unsafe { msi::record_get_field_count(self.ptr) }
 	}
 
 	#[must_use]
 	pub fn null(&self, field: u32) -> bool {
-		unsafe { libmsi_record_is_null(self.ptr, field) }
+		unsafe { msi::record_is_null(self.ptr, field) }
 	}
 
 	#[must_use]
 	pub fn string(&self, field: u32) -> OsString {
-		let ptr = unsafe { libmsi_record_get_string(self.ptr, field) };
+		let ptr = unsafe { msi::record_get_string(self.ptr, field) };
 		let string = unsafe { CStr::from_ptr(ptr) };
 
 		let string = OsStr::from_bytes(string.to_bytes()).to_os_string();

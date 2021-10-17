@@ -2,7 +2,7 @@ use bindgen::builder;
 use bindgen::callbacks::{EnumVariantValue, ParseCallbacks};
 
 use syn::visit_mut::{self, VisitMut};
-use syn::{parse_quote, Ident, Item};
+use syn::{parse_quote, ForeignItem, Ident, Item, LitStr, Type, TypePath};
 
 use std::convert::AsRef;
 use std::env::var_os;
@@ -93,8 +93,13 @@ struct RemoveThere;
 impl VisitMut for RemoveThere {
 	fn visit_ident_mut(&mut self, node: &mut Ident) {
 		let name = format!("{}", node);
+		let name = name
+			.strip_prefix(reserved!(@))
+			.or_else(|| name.strip_prefix("Libmsi"))
+			.or_else(|| name.strip_prefix("_Libmsi"))
+			.or_else(|| name.strip_prefix("libmsi_"));
 
-		if let Some(name) = name.strip_prefix(reserved!(@)) {
+		if let Some(name) = name {
 			*node = Ident::new(name, node.span());
 		}
 
@@ -128,6 +133,52 @@ fn post2(source: &String) -> Option<String> {
 		let (before, after) = file.items.split_at_mut(i);
 		let item = &mut after[0];
 
+		if let Item::Type(item) = item {
+			if format!("{}", item.ident).contains(reserved!(@)) {
+				remove!(i);
+			}
+
+			RemoveThere.visit_item_type_mut(item);
+
+			if let Type::Path(TypePath { qself: None, path }) = &*item.ty {
+				if let Some(id) = path.get_ident() {
+					if format!("{}", item.ident) == format!("{}", id) {
+						remove!(i);
+					}
+				}
+			}
+		}
+
+		if let Item::ForeignMod(item) = item {
+			for item in &mut item.items {
+				if let ForeignItem::Fn(item) = item {
+					let id = &item.sig.ident;
+					let name = format!("{}", id);
+					let span = id.span();
+
+					let has_link_name = item
+						.attrs
+						.iter()
+						.find(|x| match x.path.get_ident() {
+							None => false,
+							Some(i) => format!("{}", i) == "link_name",
+						})
+						.is_some();
+
+					if !has_link_name {
+						let name = LitStr::new(name.as_str(), span);
+						item.attrs.push(parse_quote!(
+							#[link_name = #name]
+						));
+					}
+				}
+			}
+
+			item.attrs.push(parse_quote!(
+				#[link(name = "msi")]
+			));
+		}
+
 		if let Some(last) = before.last_mut() {
 			check! {
 				(last, item) as Item::Impl,
@@ -149,17 +200,6 @@ fn post2(source: &String) -> Option<String> {
 			}
 		}
 
-		if let Item::Type(item) = item {
-			if format!("{}", item.ident).contains(reserved!(@)) {
-				remove!(i);
-			}
-		}
-
-		if let Item::ForeignMod(item) = item {
-			item.attrs.push(parse_quote!(
-				#[link(name = "msi")]
-			));
-		}
 		i += 1;
 	}
 
