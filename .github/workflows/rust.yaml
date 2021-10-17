@@ -11,5 +11,5 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - run: sudo apt install msitools -y
+    - run: sudo apt install libmsi-dev -y
     - run: cargo build
