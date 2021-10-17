@@ -18,11 +18,12 @@ jobs:
 
     - uses: actions/cache@v2
       with:
-        key: ${{ runner.os }}-cargo-r1-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: ${{ runner.os }}-cargo-r1-
+        key: ${{ runner.os }}-cargo-r2-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-r2-
         path: |
           ${{ env.CARGO_HOME }}
           ${{ env.RUSTUP_HOME }}
+          target/
 
     - run: sudo apt install libmsi-dev -y
     - run: rustup default nightly
