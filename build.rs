@@ -1,22 +1,15 @@
-use bindgen::{
-	builder,
-	callbacks::{EnumVariantValue, ParseCallbacks},
-};
+use bindgen::builder;
+use bindgen::callbacks::{EnumVariantValue, ParseCallbacks};
 
-use syn::{
-	parse_quote,
-	visit_mut::{self, VisitMut},
-	Ident, Item,
-};
+use syn::visit_mut::{self, VisitMut};
+use syn::{parse_quote, Ident, Item};
 
-use std::{
-	convert::AsRef,
-	env::var_os,
-	fs::File,
-	io::{self, Write},
-	iter::{FromIterator, IntoIterator},
-	path::PathBuf,
-};
+use std::convert::AsRef;
+use std::env::var_os;
+use std::fs::File;
+use std::io::{self, Write};
+use std::iter::{FromIterator, IntoIterator};
+use std::path::PathBuf;
 
 use quote::ToTokens;
 

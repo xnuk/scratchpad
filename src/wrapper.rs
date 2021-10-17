@@ -1,11 +1,9 @@
-use std::{
-	convert::AsRef,
-	ffi::{CStr, CString, OsStr, OsString},
-	fmt,
-	os::unix::ffi::OsStrExt,
-	path::Path,
-	ptr::{null, null_mut},
-};
+use std::convert::AsRef;
+use std::ffi::{CStr, CString, OsStr, OsString};
+use std::fmt;
+use std::os::unix::ffi::OsStrExt;
+use std::path::Path;
+use std::ptr::{null, null_mut};
 
 use crate::bindings::*;
 use glib::ffi::{g_free, gpointer};
