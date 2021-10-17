@@ -211,13 +211,18 @@ fn post2(source: &String) -> Option<String> {
 }
 
 fn compile() -> Option<String> {
+	let flags = String::from_utf8(
+		Command::new("pkg-config")
+			.args(["--cflags-only-I", "libmsi-1.0"])
+			.output()
+			.ok()?
+			.stdout,
+	)
+	.ok()?;
+
 	builder()
 		.header_contents("wrapper.h", "#include <libmsi.h>")
-		.clang_args(&[
-			"--include-directory=/usr/lib/glib-2.0/include/",
-			"--include-directory=/usr/include/glib-2.0/",
-			"--include-directory=/usr/include/libmsi-1.0/",
-		])
+		.clang_args(flags.split_whitespace())
 		.allowlist_function(LIBMSI_REGEX)
 		.allowlist_type(LIBMSI_REGEX)
 		.allowlist_var(LIBMSI_REGEX)
