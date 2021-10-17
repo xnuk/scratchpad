@@ -1,25 +1,2 @@
-[package]
-name = "libmsi"
-version = "0.1.0"
-edition = "2021"
-license = "AGPL-3.0-or-later"
-rust-version = "1.57"
-
-[dependencies]
-gio-sys = "^0.14.0"
-glib-sys = "^0.14.0"
-glib = "^0.14.8"
-
-[build-dependencies]
-quote = "1.0.10"
-
-[build-dependencies.syn]
-version = "^1.0.80"
-default-features = false
-features = ["parsing", "visit-mut", "full", "printing"]
-
-[build-dependencies.bindgen]
-version = "^0.59.1"
-default-features = false
-# static or runtime
-features = ["runtime"]
+[workspace]
+members = ["generate", "libmsi"]

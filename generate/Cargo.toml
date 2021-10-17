@@ -1,0 +1,24 @@
+[package]
+name = "libmsi-generate"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+rust-version = "1.57"
+
+[dependencies]
+quote = "1.0.10"
+
+[dependencies.syn]
+version = "^1.0.80"
+default-features = false
+features = ["parsing", "visit-mut", "full", "printing"]
+
+[dependencies.bindgen]
+version = "^0.59.1"
+default-features = false
+# static or runtime
+features = ["runtime"]
+
+[[bin]]
+name = "generate"
+path = "generate.rs"

@@ -268,10 +268,16 @@ dependencies = [
 name = "libmsi"
 version = "0.1.0"
 dependencies = [
- "bindgen",
  "gio-sys",
  "glib",
  "glib-sys",
+]
+
+[[package]]
+name = "libmsi-generate"
+version = "0.1.0"
+dependencies = [
+ "bindgen",
  "quote",
  "syn",
 ]
