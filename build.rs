@@ -4,12 +4,8 @@ use bindgen::callbacks::{EnumVariantValue, ParseCallbacks};
 use syn::visit_mut::{self, VisitMut};
 use syn::{parse_quote, ForeignItem, Ident, Item, LitStr, Type, TypePath};
 
-use std::convert::AsRef;
-use std::env::var_os;
 use std::fs::File;
 use std::io::{self, Write};
-use std::iter::{FromIterator, IntoIterator};
-use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread;
 
@@ -24,26 +20,6 @@ const LIBMSI_REGEX: &'static str = "(?i).*libmsi.*";
 
 #[derive(Debug)]
 struct Callback;
-
-struct Lines(String);
-
-impl<T: AsRef<str>> FromIterator<T> for Lines {
-	fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Lines {
-		let mut iter = iter.into_iter();
-
-		let mut string = match iter.next() {
-			Some(v) => String::from(v.as_ref()),
-			None => String::new(),
-		};
-
-		for item in iter {
-			string.push('\n');
-			string += item.as_ref();
-		}
-
-		Lines(string)
-	}
-}
 
 impl ParseCallbacks for Callback {
 	fn enum_variant_name(
@@ -272,8 +248,7 @@ fn main() -> io::Result<()> {
 	let source =
 		post2(&compile().expect("Compile failed")).expect("Compile failed");
 
-	let path = PathBuf::from(var_os("OUT_DIR").unwrap()).join("bindings.rs");
-	let mut file = File::create(&path)?;
+	let mut file = File::create("./src/bindings.rs")?;
 
 	let command = Command::new("rustfmt")
 		.args(["--edition=2018", "--emit=stdout"])
