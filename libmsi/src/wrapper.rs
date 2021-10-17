@@ -61,10 +61,11 @@ impl Database {
 	}
 
 	#[must_use]
-	pub fn query_iter<S: AsRef<str>>(&self, query: S) -> Option<FetchIter> {
-		let query = Query::new(&self, query)?;
-
-		Some(FetchIter(query))
+	pub fn query_iter<S: AsRef<str>>(&self, query: S) -> FetchIter {
+		match Query::new(&self, query) {
+			Some(query) => FetchIter::Query(query),
+			None => FetchIter::Empty,
+		}
 	}
 
 	pub fn is_readonly(&self) -> bool {
@@ -94,13 +95,19 @@ impl Query {
 	}
 }
 
-pub struct FetchIter(Query);
+pub enum FetchIter {
+	Query(Query),
+	Empty,
+}
 
 impl Iterator for FetchIter {
 	type Item = Record;
 
 	fn next(&mut self) -> Option<Record> {
-		self.0.fetch()
+		match self {
+			FetchIter::Query(query) => query.fetch(),
+			FetchIter::Empty => None,
+		}
 	}
 }
 

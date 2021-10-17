@@ -1,43 +1,52 @@
 #![cfg(unix)]
 
 use libmsi::{DBFlags, Database};
+use std::collections::HashMap;
 use std::env::args_os;
 use std::io::{self, ErrorKind};
 
+#[derive(Debug)]
+struct Directory<T> {
+	id: T,
+	parent: Option<T>,
+	name: T,
+}
+
 fn main() -> io::Result<()> {
-	let (path, count) = {
+	let path = {
 		let mut args = args_os().skip(1);
 
 		let path = args
 			.next()
 			.ok_or::<io::Error>(ErrorKind::InvalidInput.into())?;
 
-		let count = args
-			.next()
-			.and_then(|x| x.to_string_lossy().parse().ok())
-			.unwrap_or(1u32);
-
-		(path, count)
+		path
 	};
 
-	// loop for memory leak detect
-	for _ in 0..count {
-		let database = Database::new(&path, DBFlags::READONLY).unwrap();
+	let database = Database::new(&path, DBFlags::READONLY).unwrap();
 
-		{
-			let query = database
-				.query_iter("select `FileName`, `Component_` from `File`")
-				.unwrap();
+	let directories = database.query_iter(
+		"select `Directory`, `Directory_Parent`, `DefaultDir` from `Directory`",
+	).map(|record| {
+		let id = record.string(1);
+		let parent = {
+				let st = record.string(2);
+				if st.is_empty() { None } else { Some(st) }
+			};
+		let directory = Directory {
+			id: id.clone(),
+			parent,
+			name: record.string(3),
+		};
+		(id, directory)
+	}).collect::<HashMap<_, _>>();
 
-			let mut i = 0u32;
-			for _record in query {
-				// println!("{:?}", record);
-				i += 1;
-			}
+	println!("{:#?}", directories);
 
-			println!("{:?}", i);
-		}
-	}
+	// .query_iter("select `FileName`, `Component_` from `File`")
+	// .query_iter(r#"select * from `_Columns` where .`Table` = 'File'"#)
+	// .query_iter("select `Directory`, `Directory_Parent`, `DefaultDir` from `Directory`")
+	// .query_iter("select `Component`, `ComponentId`, `Directory_`, `Attributes`, `KeyPath` from `Component`")
 
 	Ok(())
 }
