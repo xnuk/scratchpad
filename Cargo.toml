@@ -1,0 +1,11 @@
+# '$schema' = 'https://taplo.tamasfe.dev/schemas/cargo.toml.json'
+
+[package]
+name = "msi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+[dependencies.msi]
+git = "https://github.com/mdsteele/rust-msi"
+rev = "47579e7da453bd456cfbd8ab45a0aaf917459d37"
