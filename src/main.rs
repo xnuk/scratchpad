@@ -88,8 +88,22 @@ macro_rules! expr {
 }
 
 macro_rules! select {
-	($table:ident $(,)? $($a:ident $(,)?)*) => {{
-		Select::table(stringify!($table)).columns(&[$(stringify!($a)),*])
+	(@assign: $v:expr =>) => {};
+	(@assign: $v:expr => $first:ident $($rest:ident)*) => {
+		#[allow(non_snake_case)]
+		let $first = $v;
+		select!(@assign: $v + 1 => $($rest)*);
+	};
+	($table:ident $(,)? $(:)? $(;)? $($a:ident $(,)? $(;)?)*) => {{
+		let columns = [$(stringify!($a)),*];
+		Select::table(stringify!($table)).columns(&columns)
+	}};
+	($table:ident $(,)? $(:)? $(;)? $($a:ident $(,)? $(;)?)* | $query:ident => $body:expr) => {{
+		let columns = [$(stringify!($a)),*];
+		select!(@assign: 0 => $($a)*);
+
+		let $query = Select::table(stringify!($table)).columns(&columns);
+		$body
 	}}
 }
 
@@ -177,34 +191,61 @@ fn main() -> io::Result<()> {
 	// "Component.Attributes",  /* Int16 */
 	// "Component.Condition",   /* Condition? */
 	// "Component.KeyPath",     /* Identifier? */
-	let ss = select!(Component,
-			Component ComponentId Directory_ Attributes Condition KeyPath
-	);
-	let query = select("File")
-		.inner_join(
-			select("Component"),
-			expr!(Component.Component == File.Component_)
-		)
-		.inner_join(
-			select("Directory"),
-			expr!(Directory.Directory == Component.Directory_),
-		)
-		// .columns(&[
-		// 	"File.File",
-		// 	//"Directory.DefaultDir",
-		// 	"File.FileName",
-		// 	"File.Component_",
-		// 	"Component.Component",
-		// ]);
-		;
-
-	println!("{}", query);
-
-	for row in file.select_rows(query)? {
-		println!("{:?}", Show(row.columns()));
-		let values = (0..row.len()).map(|i| &row[i]).collect::<Vec<_>>();
-		println!("{:?}", values);
+	let directories = select! {
+		Directory: Directory Directory_Parent DefaultDir | query => {
+			file.select_rows(query)?.filter_map(move |row| {
+				if let (
+					Value::Str(dir),
+					Value::Str(parent),
+					Value::Str(name),
+				) = (
+					&row[Directory],
+					&row[Directory_Parent],
+					&row[DefaultDir]
+				) {
+					Some((dir.clone(), parent.clone(), name.clone()))
+				} else {
+					None
+				}
+			})
+		}
 	}
+	.collect::<Vec<_>>();
+
+	println!("{:?}", directories);
+
+	// let components = select! { Component:
+	// 	Component ComponentId Directory_ Attributes Condition KeyPath |
+	// 	query => {
+	// 		file.select_rows(query)?.map(|row| {
+	// 			row
+	// 		})
+	// 	}
+	// };
+	// let query = select("File")
+	// 	.inner_join(
+	// 		select("Component"),
+	// 		expr!(Component.Component == File.Component_)
+	// 	)
+	// 	.inner_join(
+	// 		select("Directory"),
+	// 		expr!(Directory.Directory == Component.Directory_),
+	// 	)
+	// .columns(&[
+	// 	"File.File",
+	// 	//"Directory.DefaultDir",
+	// 	"File.FileName",
+	// 	"File.Component_",
+	// 	"Component.Component",
+	// ]);
+
+	// println!("{}", query);
+
+	// for row in file.select_rows(query)? {
+	// 	println!("{:?}", Show(row.columns()));
+	// 	let values = (0..row.len()).map(|i| &row[i]).collect::<Vec<_>>();
+	// 	println!("{:?}", values);
+	// }
 
 	// for table in file.tables() {
 	// 	println!("{} {:#?}", table.name(), Show(table.columns()));
