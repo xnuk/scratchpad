@@ -6,6 +6,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+cab = "0.3.0"
 [dependencies.msi]
 git = "https://github.com/mdsteele/rust-msi"
 rev = "47579e7da453bd456cfbd8ab45a0aaf917459d37"

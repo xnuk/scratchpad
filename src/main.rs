@@ -1,6 +1,8 @@
+use cab::Cabinet;
 use msi::{open, Column, Expr, Package, Select, Value};
+use std::borrow::Cow;
 use std::env::args_os;
-use std::fmt::{self, Debug, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::io::{self, Read, Seek};
 
 trait ToExpr {
@@ -64,11 +66,6 @@ fn null() -> Expr {
 	Expr::null()
 }
 
-#[inline]
-fn select<T: Into<String>>(item: T) -> Select {
-	Select::table(item)
-}
-
 macro_rules! expr {
 	($a:ident $(. $ap:ident)?) => {
 		col(
@@ -88,22 +85,52 @@ macro_rules! expr {
 }
 
 macro_rules! select {
-	(@assign: $v:expr =>) => {};
-	(@assign: $v:expr => $first:ident $($rest:ident)*) => {
+	(
+		@assign $row:ident, $v:expr =>
+			$first_cont:ident ($first_key:ident),
+			$( $cont:ident ($key:ident) ),* $(,)?
+	) => {
 		#[allow(non_snake_case)]
-		let $first = $v;
-		select!(@assign: $v + 1 => $($rest)*);
+		let $first_key = select!(@lamb &$row[$v], $first_cont);
+		select!(@assign $row, $v + 1 => $($cont($key),)*);
 	};
-	($table:ident $(,)? $(:)? $(;)? $($a:ident $(,)? $(;)?)*) => {{
-		let columns = [$(stringify!($a)),*];
-		Select::table(stringify!($table)).columns(&columns)
-	}};
-	($table:ident $(,)? $(:)? $(;)? $($a:ident $(,)? $(;)?)* | $query:ident => $body:expr) => {{
-		let columns = [$(stringify!($a)),*];
-		select!(@assign: 0 => $($a)*);
 
-		let $query = Select::table(stringify!($table)).columns(&columns);
-		$body
+	(@assign $row:ident, $v:expr => $(,)?) => {};
+
+	(@lamb $col:expr, $cont:ident) => {
+		select!(@ques $cont, match $col {
+			select!(@val x $cont) => Some(select!(@lamb $cont(x))),
+			_ => None,
+		})
+	};
+	(@lamb Str($x:ident)) => { $x.to_owned() };
+	(@lamb Int($x:ident)) => { $x };
+	(@lamb MayStr($x:ident)) => { $x.to_owned() };
+	(@lamb MayInt($x:ident)) => { $x };
+
+	(@ques Str, $t:expr) => {$t?};
+	(@ques Int, $t:expr) => {$t?};
+	(@ques MayStr, $t:expr) => {$t};
+	(@ques MayInt, $t:expr) => {$t};
+
+	(@val $x:ident Str) => {Value::Str($x)};
+	(@val $x:ident Int) => {Value::Int($x)};
+	(@val $x:ident MayStr) => {Value::Str($x)};
+	(@val $x:ident MayInt) => {Value::Int($x)};
+
+	(
+		$db:ident, $table:ident (
+			| $( $cont:ident($a:ident) ),* $(,)? |
+			$body:expr
+		)
+		$(,)?
+	) => {{
+		$db.select_rows(
+			Select::table(stringify!($table)).columns(&[$(stringify!($a)),*])
+		)?.filter_map(move |row| {
+			select!(@assign row, 0 => $($cont($a),)*);
+			$body
+		})
 	}}
 }
 
@@ -114,9 +141,9 @@ impl Debug for Show<&[Column]> {
 		let mut list = f.debug_list();
 
 		for item in self.0.iter() {
-			let coltype = match item.category() {
-				Some(category) => format!("{:?}", category),
-				None => format!("{:?}", item.coltype()),
+			let coltype: Box<dyn Display> = match item.category() {
+				Some(category) => Box::new(category),
+				None => Box::new(item.coltype()),
 			};
 
 			let nullable = item.is_nullable();
@@ -136,6 +163,14 @@ impl Debug for Show<&[Column]> {
 		}
 
 		list.finish()
+	}
+}
+
+#[inline]
+fn long_name<'a>(text: &'a str) -> &'a str {
+	match text.split_once('|') {
+		Some((_, x)) => x,
+		None => text,
 	}
 }
 
@@ -191,28 +226,71 @@ fn main() -> io::Result<()> {
 	// "Component.Attributes",  /* Int16 */
 	// "Component.Condition",   /* Condition? */
 	// "Component.KeyPath",     /* Identifier? */
-	let directories = select! {
-		Directory: Directory Directory_Parent DefaultDir | query => {
-			file.select_rows(query)?.filter_map(move |row| {
-				if let (
-					Value::Str(dir),
-					Value::Str(parent),
-					Value::Str(name),
-				) = (
-					&row[Directory],
-					&row[Directory_Parent],
-					&row[DefaultDir]
-				) {
-					Some((dir.clone(), parent.clone(), name.clone()))
-				} else {
-					None
-				}
-			})
-		}
-	}
+	let directories = select!(
+		file,
+		Directory(
+			|Str(Directory), MayStr(Directory_Parent), Str(DefaultDir)| {
+				Some((
+					Directory,
+					Directory_Parent,
+					long_name(&DefaultDir).to_owned(),
+				))
+			}
+		)
+	)
 	.collect::<Vec<_>>();
 
-	println!("{:?}", directories);
+	let components = select!(
+		file,
+		Component(|Str(Component), MayStr(ComponentId), Str(Directory_)| {
+			Some((Component, ComponentId, Directory_))
+		})
+	)
+	.collect::<Vec<_>>();
+
+	let files = select!(
+		file,
+		File(|Str(File), Str(Component_), Str(FileName)| {
+			Some((File, Component_, long_name(&FileName).to_owned()))
+		})
+	)
+	.collect::<Vec<_>>();
+
+	let media = select!(
+		file,
+		Media(|Str(Cabinet)| Cabinet.strip_prefix('#').map(|v| v.to_owned()))
+	)
+	.collect::<Vec<_>>();
+
+	for id in media {
+		let mut cabinet = Cabinet::new(file.read_stream(&id)?)?;
+
+
+		let folder = &cabinet
+			.folder_entries()
+			.flat_map(|x| {
+				println!("{:?}", x.compression_type());
+				x.file_entries()
+			})
+			.map(|v| (v.name().to_owned(), v.uncompressed_size()))
+			.collect::<Vec<_>>();
+
+		for entry @ (name, size) in folder {
+			println!("{:?}", entry);
+			let mut buf = Vec::with_capacity(*size as usize);
+			cabinet.read_file(name)?.read_to_end(&mut buf)?;
+			println!("{:?}", buf.len());
+		}
+	}
+
+	// let col = [
+	// 	"DiskId",       /* #SMALLINT */
+	// 	"LastSequence", /* SMALLINT */
+	// 	"DiskPrompt",   /* %Text? */
+	// 	"Cabinet",      /* Cabinet? */
+	// 	"VolumeLabel",  /* Text? */
+	// 	"Source",       /* Property? */
+	// ];
 
 	// let components = select! { Component:
 	// 	Component ComponentId Directory_ Attributes Condition KeyPath |
