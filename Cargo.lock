@@ -84,13 +84,6 @@ checksum = "a246d82be1c9d791c5dfde9a2bd045fc3cbba3fa2b11ad558f27d01712f00569"
 
 [[package]]
 name = "msi"
-version = "0.1.0"
-dependencies = [
- "msi 0.4.0",
-]
-
-[[package]]
-name = "msi"
 version = "0.4.0"
 source = "git+https://github.com/mdsteele/rust-msi?rev=a287c4fd90496f8dfd5e172080d253bcd1d1b446#a287c4fd90496f8dfd5e172080d253bcd1d1b446"
 dependencies = [
@@ -98,6 +91,13 @@ dependencies = [
  "cfb",
  "encoding",
  "uuid",
+]
+
+[[package]]
+name = "msiviewer"
+version = "0.1.0"
+dependencies = [
+ "msi",
 ]
 
 [[package]]
