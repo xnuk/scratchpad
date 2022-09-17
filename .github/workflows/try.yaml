@@ -11,12 +11,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: echo Running on "$(python3 --version)"
-
-    - name: inside folder
-      run: |
-        cd '그래서 from .my import underwear (상대 그 뭐냐 뭐시기) 하려면 어떻게 해야 해요?'
-        python3 run.py || true
-
-    - name: outside folder
-      run: |
-        python3 '그래서 from .my import underwear (상대 그 뭐냐 뭐시기) 하려면 어떻게 해야 해요?/run.py' || true
+    - run: ./script.py
