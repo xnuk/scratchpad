@@ -82,6 +82,10 @@ async fn dick(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
 	let (watcher, tx) = watch_state();
+
+	// watcher should outlive
+	let _ = watcher;
+
 	let app = Router::new().route(
 		"/dick",
 		routing::get_service(dick.with_state((tx, Duration::from_secs(10)))),
