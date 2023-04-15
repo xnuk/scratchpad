@@ -1,136 +1,95 @@
-use hyper::header::ACCEPT;
-use pin_project::pin_project;
-use std::collections::VecDeque;
-use std::path::{Path, PathBuf};
-use std::pin::Pin;
-use std::task::Poll;
-use std::{io, task, thread};
+use axum::body::StreamBody;
+use axum::extract::State;
+use axum::handler::Handler;
+use axum::http::{header::ACCEPT, HeaderMap};
+use axum::{routing, Router};
+use futures::future::{self, Either};
+use futures::{Stream, StreamExt as FutureStreamExt};
 
-use chrono::SecondsFormat;
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use tokio_stream::wrappers::{BroadcastStream, IntervalStream};
+use tokio_stream::StreamExt as TokioStreamExt;
+
 use chrono::{offset::Utc, DateTime};
-use hyper::body::{Body, Bytes, Frame, Incoming};
-use hyper::{Method, Request, Response};
-use notify::{recommended_watcher, RecursiveMode, Watcher};
+use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::broadcast;
-use tokio::time::{sleep, Duration, Instant, Sleep};
+use tokio::time::{interval, Duration};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Message {
-	Ping,
-	Changed,
-}
+type ChangeData = DateTime<Utc>;
+type ChangeDataSender = broadcast::Sender<ChangeData>;
 
-// async fn ping(mut sender: broadcast::Sender<Message>) {
-// 	loop {
-// 		sleep(Duration::from_secs(3)).await;
-// 		let _ = sender.send(Message::Ping);
-// 	}
-// }
-
-#[pin_project]
-struct Dick {
-	rx: Option<broadcast::Receiver<DateTime<Utc>>>,
-
-	#[pin]
-	timeout: Sleep,
-}
-
-impl Dick {
-	fn from_rx(rx: broadcast::Receiver<DateTime<Utc>>) -> Self {
-		Dick {
-			rx: Some(rx),
-			timeout: sleep(Duration::from_secs(3)),
-		}
-	}
-	fn empty() -> Self {
-		Dick {
-			rx: None,
-			timeout: sleep(Duration::from_secs(3)),
-		}
-	}
-}
-
-impl Body for Dick {
-	type Data = Bytes;
-	type Error = ();
-
-	fn poll_frame(
-		self: Pin<&mut Self>,
-		cx: &mut task::Context<'_>,
-	) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
-		let this = self.project();
-		if let Some(rx) = this.rx {
-			if let Ok(t) = rx.try_recv() {
-				*this.rx = None;
-				Poll::Ready(Some(Ok(Frame::data(Bytes::from(format!(
-					"event: change\ndata: {}\n\n",
-					t.to_rfc3339()
-				))))))
-			} else if this.timeout.is_elapsed() {
-				this.timeout.reset(Instant::now() + Duration::from_secs(3));
-				Poll::Ready(Some(Ok(Frame::data(Bytes::from(": ping\n\n")))))
+fn streamed_body(
+	rx: broadcast::Receiver<ChangeData>,
+	tick: Duration,
+) -> StreamBody<impl Stream<Item = Result<String, Infallible>>> {
+	let b = TokioStreamExt::fuse(FutureStreamExt::scan(
+		TokioStreamExt::merge(
+			TokioStreamExt::map(IntervalStream::new(interval(tick)), |_| {
+				Either::Left(())
+			}),
+			TokioStreamExt::filter_map(BroadcastStream::new(rx), |v| {
+				v.ok().map(Either::Right)
+			}),
+		),
+		false,
+		|changed, x| {
+			future::ready(if *changed {
+				None
 			} else {
-				Poll::Pending
-			}
-		} else {
-			Poll::Ready(None)
-		}
-	}
+				Some(Ok(if let Either::Right(time) = x {
+					*changed = true;
+					format!("event: change\ndata: {}\n\n", time.to_rfc3339())
+				} else {
+					": ping\n\n".to_string()
+				}))
+			})
+		},
+	));
 
-	fn is_end_stream(&self) -> bool {
-		self.rx.is_none()
-	}
+	StreamBody::new(b)
 }
 
-async fn handle_request(
-	req: Request<Incoming>,
-) -> hyper::Result<Response<Dick>> {
-	if req.method() != Method::GET || req.uri().path() != "/dick" {
-		return Ok(Response::builder()
-			.status(404)
-			.body(Dick::empty())
-			.unwrap());
-	}
-	let headers = req.headers();
-	let val = headers.get(ACCEPT);
-	println!("{val:?}");
-
-	Ok(todo!())
-}
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn watch_state() -> (RecommendedWatcher, ChangeDataSender) {
 	let (tx, _) = broadcast::channel(10);
 	let mut watcher = {
 		let tx = tx.clone();
 		recommended_watcher(move |_| {
-			let _ = tx.send(Instant::now());
-		})?
+			let _ = tx.send(Utc::now());
+		})
+		.unwrap()
 	};
 
-	watcher.watch(
-		PathBuf::from("./dick").as_path(),
-		RecursiveMode::NonRecursive,
-	)?;
+	watcher
+		.watch(
+			PathBuf::from("./dick").as_path(),
+			RecursiveMode::NonRecursive,
+		)
+		.unwrap();
 
-	let mut line = String::new();
-	while io::stdin().read_line(&mut line).is_ok() {
-		if line.trim() == "stop" {
-			break;
-		} else {
-			let mut rx = tx.subscribe();
-			match rx.recv().await {
-				Err(e) => {
-					eprintln!("{e}");
-					break;
-				}
+	(watcher, tx)
+}
 
-				Ok(t) => {
-					println!("{}ms", t.elapsed().as_millis());
-				}
-			}
-		}
-	}
+async fn dick(
+	State((tx, tick)): State<(ChangeDataSender, Duration)>,
+	headers: HeaderMap,
+) -> StreamBody<impl Stream<Item = Result<String, Infallible>>> {
+	eprintln!("{:?}", headers.get(ACCEPT));
+	streamed_body(tx.subscribe(), tick)
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+	let (watcher, tx) = watch_state();
+	let app = Router::new().route(
+		"/dick",
+		routing::get_service(dick.with_state((tx, Duration::from_secs(10)))),
+	);
+
+	axum::Server::bind(&SocketAddr::new([127, 0, 0, 1].into(), 8080))
+		.serve(app.into_make_service())
+		.await?;
 
 	Ok(())
 }
