@@ -4,13 +4,13 @@ use axum::handler::Handler;
 use axum::http::{header::ACCEPT, HeaderMap};
 use axum::{routing, Router};
 use futures::future::{self, Either};
-use futures::{Stream, StreamExt as FutureStreamExt};
+use futures::StreamExt as FutureStreamExt;
 
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use tokio_stream::wrappers::{BroadcastStream, IntervalStream};
-use tokio_stream::StreamExt as TokioStreamExt;
+use tokio_stream::{Stream, StreamExt as TokioStreamExt};
 
 use chrono::{offset::Utc, DateTime};
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
