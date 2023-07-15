@@ -1,0 +1,9 @@
+# vim: sw=2
+image: archlinux
+arch: x86_64
+packages:
+- archiso
+tasks:
+- build: sudo mkarchiso -vrw working -o dist ./xnukiso/
+artifacts:
+- ./dist/archlinux-xnuk-nightly-x86_64.iso

@@ -1,0 +1,9 @@
+# Tier 2
+Server = https://mirror.anigil.com/archlinux/$repo/os/$arch
+Server = https://mirror.premi.st/archlinux/$repo/os/$arch
+
+# Tier 1
+Server = https://mirror.funami.tech/arch/$repo/os/$arch
+
+# Backup
+Server = https://seoul.mirror.pkgbuild.com/$repo/os/$arch

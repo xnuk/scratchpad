@@ -1,0 +1,35 @@
+# vim: ft=conf
+
+#Port 22
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+
+LogLevel VERBOSE
+
+MaxAuthTries 6
+PermitRootLogin prohibit-password
+
+UsePAM no
+KbdInteractiveAuthentication no
+PasswordAuthentication no
+PermitEmptyPasswords no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+
+PrintMotd no
+
+Subsystem	sftp	/usr/lib/ssh/sftp-server -f AUTHPRIV -l INFO
+
+KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+
+# AllowUsers xnuk@192.168.1.*
+
+AuthorizedKeysFile /dev/null
+Match Address 192.168.1.0/24,127.0.0.1,::1
+	AuthorizedKeysFile .ssh/authorized_keys

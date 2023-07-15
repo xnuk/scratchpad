@@ -1,0 +1,3 @@
+lwm.button1: alacritty
+lwm.button2: midori --private
+lwm.focus: click

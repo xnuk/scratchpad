@@ -1,0 +1,112 @@
+arch-install-scripts
+archlinux-keyring
+amd-ucode
+intel-ucode
+linux
+
+# virutal idol
+qemu-guest-agent
+virtualbox-guest-utils-nox
+hyperv
+open-vm-tools
+
+mkinitcpio
+mkinitcpio-archiso
+syslinux
+
+# mkinitcpio-archiso optionals
+# progress
+pv
+
+base
+
+systemd
+systemd-resolvconf
+
+efibootmgr
+efitools
+
+# Fonts
+adobe-source-han-sans-kr-fonts
+# GTK already requires it
+adobe-source-code-pro-fonts
+
+# Utilities
+alacritty
+bat
+fd
+fish
+dash
+curl
+rsync
+fzf
+git
+ripgrep
+kakoune
+tmux
+htop
+nano
+croc
+qrencode
+
+# browser
+netsurf
+
+xorg-server
+xorg-xinit
+xdg-utils
+
+# networking
+dhcpcd
+iwd
+broadcom-wl
+wireless-regdb
+wireless_tools
+openbsd-netcat
+nmap
+openssh
+ndisc6
+
+# gparted and optionals
+gparted
+btrfs-progs
+dosfstools
+exfatprogs
+f2fs-tools
+gpart
+jfsutils
+mtools
+nfs-utils
+nilfs-utils
+ntfs-3g
+reiserfsprogs
+xfsprogs
+udftools
+
+# Compression things
+tar
+gzip
+xz
+zstd
+bzip2
+
+posix
+man-db
+man-pages
+
+# hardware utilities? dunno
+sdparm
+lsscsi
+smartmontools
+sg3_utils
+lvm2
+usb_modeswitch
+usbutils
+squashfs-tools
+nvme-cli
+
+# disk encryption
+cryptsetup
+
+# all hail archwiki
+arch-wiki-docs
