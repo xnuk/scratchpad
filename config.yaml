@@ -1,0 +1,24 @@
+daemon:
+  modules:
+  - Wayland
+  - Indicator
+
+engine:
+  default_category: Hangul
+
+  global_hotkeys:
+    C-Space: &toggle
+      behavior: !Toggle [Hangul, Latin]
+      result: Consume
+
+  latin:
+    preferred_direct: true
+
+  hangul:
+    layout: xnuk
+    word_commit: true
+    addons:
+      xnuk:
+      - ComposeChoseongSsang
+      - ComposeJongseongSsang
+      - ComposeJungseongSsang
