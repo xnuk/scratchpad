@@ -12,7 +12,6 @@ open-vm-tools
 
 mkinitcpio
 mkinitcpio-archiso
-syslinux
 
 # mkinitcpio-archiso optionals
 # progress
@@ -25,6 +24,11 @@ systemd-resolvconf
 
 efibootmgr
 efitools
+
+refind
+grub
+grub-btrfs
+syslinux
 
 # Fonts
 adobe-source-han-sans-kr-fonts
@@ -48,6 +52,10 @@ htop
 nano
 croc
 qrencode
+sed
+patch
+diffutils
+time
 
 # browser
 netsurf
@@ -90,7 +98,6 @@ xz
 zstd
 bzip2
 
-posix
 man-db
 man-pages
 
