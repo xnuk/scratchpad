@@ -1,0 +1,48 @@
+# vim: sw=2
+name: Build
+on: push
+
+jobs:
+  tt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: >
+        curl --silent --get --output ./bootstrap.tar.gz
+        https://geo.mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-x86_64.tar.gz
+    - run: sudo tar xzf ./bootstrap.tar.gz --numeric-owner
+    - uses: actions/cache@v3
+      with:
+        path: root.x86_64/var/cache/pacman/pkg/
+        key: >
+          r1-${{ runner.os }}-${{
+          hashFiles('bootstrap.tar.gz')
+          }}-${{
+          hashFiles('packages.x86_64')
+          }}
+    - run: >
+        sudo install -d -m 0755 -g 0 -o 0 ./fs/ &&
+        sudo mount --bind ./root.x86_64 ./fs/
+    - run: sudo cp -af --no-preserve=ownership,mode ./airootfs/. ./fs/
+    - name: permissions
+      run: >
+        sudo chmod -R 400 ./fs/etc/shadow &&
+        sudo chmod -R 750 ./fs/root/ &&
+        sudo chmod -R 755 ./fs/usr/bin/lwm
+    - run: |
+        set -euvf
+        _chroot() {
+          sudo ./fs/bin/arch-chroot ./fs/ "$@"
+        }
+
+        sudo install -m 0644 -g 0 -o 0 \
+          pacman.conf ./fs/etc/pacman.conf
+
+        _chroot pacman-key --init
+        _chroot pacman-key --populate
+        _chroot pacman -Syu --noconfirm $(grep -Ev '^(#|$)' packages.x86_64)
+
+        sudo install -m 0644 -g 0 -o 0 \
+          airootfs/etc/pacman.conf ./fs/etc/pacman.conf
+    - run: sudo find ./fs/boot/
+    - run: sudo umount ./fs/
