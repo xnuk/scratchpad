@@ -51,7 +51,7 @@ jobs:
         sudo install -m 0644 -g 0 -o 0 \
           airootfs/etc/pacman.conf ./fs/etc/pacman.conf
     - run: sudo find ./fs/boot/
-    - run: sudo tar -cavf root.tar.zst ./fs/
+    - run: sudo tar -caf root.tar.zst ./fs/
     - run: sudo umount ./fs/
     - run: |
         sha256sum root.tar.zst > root.tar.zst.sha256sum
