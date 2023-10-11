@@ -28,7 +28,6 @@ efitools
 refind
 grub
 grub-btrfs
-syslinux
 
 # Fonts
 adobe-source-han-sans-kr-fonts
