@@ -16,7 +16,7 @@ jobs:
       with:
         path: root.x86_64/var/cache/pacman/pkg/
         key: >
-          r1-${{ runner.os }}-${{
+          pacman-packages-r1-${{ runner.os }}-${{
           hashFiles('bootstrap.tar.gz')
           }}-${{
           hashFiles('packages.x86_64')
