@@ -57,7 +57,7 @@ jobs:
           /var/lib/pacman \
           /var/cache/pacman/pkg \
           /var/log \
-          /var/tmp \
+          /var/tmp
         ./chroot fd . / -e pacnew -e pacsave -e pacorig -X rm
 
     - run: sudo tar -caf root.tar.zst ./fs/
