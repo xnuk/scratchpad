@@ -64,7 +64,7 @@ jobs:
         )
 
         mmd -i ./boot ::/EFI ::/EFI/BOOT
-        mcopy -i ./boot ./fs/efi/arch.efi ::/EFI/BOOT/BOOTx64.EFI
+        sudo mcopy -i ./boot ./fs/efi/arch.efi ::/EFI/BOOT/BOOTx64.EFI
 
     - name: cleanup
       run: |
