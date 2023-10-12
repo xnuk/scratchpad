@@ -57,9 +57,9 @@ jobs:
 
         mkfs.fat -C -n XNUKISO_EFI ./boot $(
           node -pe '
-            Math.ceil(
+            (Math.ceil(
               fs.statSync("./fs/efi/arch.efi").size / (1024 * 1024)
-            ) + 1
+            ) + 1) * 1024
           '
         )
 
@@ -77,35 +77,35 @@ jobs:
           /var/tmp
         ./chroot fd . / -e pacnew -e pacsave -e pacorig -X rm
 
-    - run: sudo tar -caf root.tar.zst ./fs/
+    - run: sudo install - d -m 755 ./iso/arch/x86_64/
+    - run: >
+        sudo mksquashfs ./fs/ ./iso/arch/x86_64/airootfs.sfs -noappend
+        -comp xz -Xbcj x86 -b 1M -Xdict-size 1M
     - run: sudo umount ./fs/
-    - run: |
-        sha256sum root.tar.zst > root.tar.zst.sha256sum
-        b2sum root.tar.zst > root.tar.zst.b2sum
+    - run: sha512sum airootfs.sfs > ./iso/arch/x86_64/airootfs.sfs.sha512
 
-    # xorriso
-    #  -no_rc
-    #  -as mkisofs -iso-level 3 -full-iso9660-filenames -joliet -joliet-long
-    #  -rational-rock
-    #  -volid "${iso_label}"
-    #  -appid "${iso_application}"
-    #  -publisher "${iso_publisher}"
-    ## -preparer "${app_name}"
-    #
-    #  __xorrisofs_options__
-    #  -partition_offset 16
-    #  -append_partition 2 C12A7328-F81F-11D2-BA4B-00A0C93EC93B "${efibootimg_wrap_with_mkfs.fat with putting /EFI/BOOT/BOOTx64.EFI}"
-    #  -append_part_as_gpt
-    #
-    #  -eltorito_alt_boot
-    #  -e --interval:appended_partition_2:all::
-    #  -no-emul-boot
-    #
-    #
-    #  -output "${out}"
-    #  "${isofs_dir}/"
+    - run: >
+        xorriso
+        -no_rc
+        -as mkisofs -iso-level 3 -full-iso9660-filenames -joliet -joliet-long
+        -rational-rock
+        -volid "XNUK_ARCH_DICK"
+        -appid "Xnuk Shuman Dick"
+        -publisher "Xnuk Shuman"
+        -partition_offset 16
+        -append_partition 2 C12A7328-F81F-11D2-BA4B-00A0C93EC93B ./boot
+        -append_part_as_gpt
+        -eltorito_alt_boot
+        -e --interval:appended_partition_2:all::
+        -no-emul-boot
+        -output root.iso
+        ./iso/
+
+    - run: |
+        sha256sum root.iso > root.iso.sha256sum
+        b2sum root.iso > root.iso.b2sum
 
     - uses: actions/upload-artifact@v3
       with:
-        name: root.tar.zst
-        path: root.tar.zst*
+        name: root.iso
+        path: root.iso*
