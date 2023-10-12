@@ -3,6 +3,7 @@
 PRESETS=('archiso')
 
 ALL_kver='/boot/vmlinuz-linux'
-archiso_config='/etc/mkinitcpio.conf.d/xnukiso.conf'
+ALL_microcode=(/boot/*-ucode.img)
 
-archiso_image="/boot/initramfs-linux.img"
+archiso_config='/etc/mkinitcpio.conf.d/xnukiso.conf'
+archiso_uki='/efi/EFI/Linux/arch.efi'
