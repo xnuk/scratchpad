@@ -46,6 +46,7 @@ jobs:
     - run: ./chroot pacman-key --init
     - run: ./chroot pacman-key --populate
     - run: ./chroot pacman -Syu --noconfirm $(grep -Ev '^(#|$)' packages.x86_64)
+    - run: ./chroot mkinitcpio -v -P
     - run: >
         sudo install -m 0644 -g 0 -o 0
         airootfs/etc/pacman.conf ./fs/etc/pacman.conf
