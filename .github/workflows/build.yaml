@@ -6,6 +6,7 @@ jobs:
   tt:
     runs-on: ubuntu-latest
     steps:
+    - run: type curl tar install mmd mcopy mksquashfs xorriso node zstd
     - uses: actions/checkout@v4
     - run: >
         curl --silent --get --output ./bootstrap.tar.gz
@@ -35,7 +36,7 @@ jobs:
         sudo chmod -R 400 ./fs/etc/shadow &&
         sudo chmod -R 750 ./fs/root/ &&
         sudo chmod -R 755 ./fs/usr/bin/lwm &&
-        sudo install -d -m 0755 -g 0 -o 0 ./fs/efi/EFI/Linux/
+        sudo install -d -m 0755 -g 0 -o 0 ./fs/efi/
 
     - run: >
         echo 'sudo ./fs/bin/arch-chroot ./fs/ "$@"' > ./chroot &&
@@ -46,14 +47,28 @@ jobs:
     - run: ./chroot pacman-key --init
     - run: ./chroot pacman-key --populate
     - run: ./chroot pacman -Syu --noconfirm $(grep -Ev '^(#|$)' packages.x86_64)
-    - run: ./chroot mkinitcpio -v -P
     - run: >
         sudo install -m 0644 -g 0 -o 0
         airootfs/etc/pacman.conf ./fs/etc/pacman.conf
 
+    - run: |
+        set -euxf
+
+        mkfs.fat -C -n XNUKISO_EFI ./boot $(
+          node -pe '
+            Math.ceil(
+              fs.statSync("./fs/efi/arch.efi").size / (1024 * 1024)
+            ) + 1
+          '
+        )
+
+        mmd -i ./boot ::/EFI ::/EFI/BOOT
+        mcopy -i ./boot ./fs/efi/arch.efi ::/EFI/BOOT/BOOTx64.EFI
+
     - name: cleanup
       run: |
         ./chroot rm -r \
+          /efi \
           /boot \
           /var/lib/pacman \
           /var/cache/pacman/pkg \
@@ -66,6 +81,28 @@ jobs:
     - run: |
         sha256sum root.tar.zst > root.tar.zst.sha256sum
         b2sum root.tar.zst > root.tar.zst.b2sum
+
+    # xorriso
+    #  -no_rc
+    #  -as mkisofs -iso-level 3 -full-iso9660-filenames -joliet -joliet-long
+    #  -rational-rock
+    #  -volid "${iso_label}"
+    #  -appid "${iso_application}"
+    #  -publisher "${iso_publisher}"
+    ## -preparer "${app_name}"
+    #
+    #  __xorrisofs_options__
+    #  -partition_offset 16
+    #  -append_partition 2 C12A7328-F81F-11D2-BA4B-00A0C93EC93B "${efibootimg_wrap_with_mkfs.fat with putting /EFI/BOOT/BOOTx64.EFI}"
+    #  -append_part_as_gpt
+    #
+    #  -eltorito_alt_boot
+    #  -e --interval:appended_partition_2:all::
+    #  -no-emul-boot
+    #
+    #
+    #  -output "${out}"
+    #  "${isofs_dir}/"
 
     - uses: actions/upload-artifact@v3
       with:
