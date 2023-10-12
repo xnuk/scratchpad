@@ -35,7 +35,7 @@ jobs:
         sudo chmod -R 400 ./fs/etc/shadow &&
         sudo chmod -R 750 ./fs/root/ &&
         sudo chmod -R 755 ./fs/usr/bin/lwm &&
-        sudo install -d -m 0755 -g 0 -o 0 ./fs/efi
+        sudo install -d -m 0755 -g 0 -o 0 ./fs/efi/EFI/Linux/
 
     - run: >
         echo 'sudo ./fs/bin/arch-chroot ./fs/ "$@"' > ./chroot &&
