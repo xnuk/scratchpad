@@ -77,7 +77,7 @@ jobs:
           /var/tmp
         ./chroot fd . / -e pacnew -e pacsave -e pacorig -X rm
 
-    - run: sudo install - d -m 755 ./iso/arch/x86_64/
+    - run: sudo install -d -m 0755 -g 0 -o 0 ./iso/arch/x86_64/
     - run: >
         sudo mksquashfs ./fs/ ./iso/arch/x86_64/airootfs.sfs -noappend
         -comp xz -Xbcj x86 -b 1M -Xdict-size 1M
