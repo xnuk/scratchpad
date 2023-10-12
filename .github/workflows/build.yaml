@@ -4,6 +4,24 @@ on: push
 
 jobs:
   tt:
+    env:
+
+      # In xorriso man page:
+      # > SOURCE_DATE_EPOCH belongs to the specs of reproducible-builds.org.
+      #
+      # And it sets
+      # * -volume date "uuid" `16 digits timestamp`
+      # * -boot_image "any" "gpt_disk_guid=" "volume_date_uuid"
+      # * -volume_date "all_file_dates" "set_to_mtime"
+      # * -iso_nowtime "=$SOURCE_DATE_EPOCH"
+      #
+      # Format: YYYY-MM-DD-hh-mm-ss-cc
+
+      # 2022-02-22T22:22:22Z
+      SOURCE_DATE_EPOCH: '1645568542'
+      ARCHISO_UUID: 2022-02-22-22-22-22-00
+      ARCHISO_LABEL: XNUK_ARCH_DICK
+
     runs-on: ubuntu-latest
     steps:
     - run: sudo apt install mtools
@@ -32,6 +50,16 @@ jobs:
         sudo install -d -m 0755 -g 0 -o 0 ./fs/ &&
         sudo mount --bind ./root.x86_64 ./fs/
     - run: sudo cp -af --no-preserve=ownership,mode ./airootfs/. ./fs/
+    - run: >
+        sed "
+        s|%ARCHISO_LABEL%|${ARCHISO_LABEL}|g;
+        s|%ARCHISO_UUID%|${ARCHISO_UUID}|g;
+        s|%INSTALL_DIR%|arch|g;
+        " ./airootfs/etc/kernel/cmdline | sudo tee ./fs/etc/kernel/cmdline
+
+    # todo: search for /boot/grub/(datestring).uuid and put in img_loop
+
+
     - name: permissions
       run: >
         sudo chmod -R 400 ./fs/etc/shadow &&
@@ -79,17 +107,21 @@ jobs:
 
     - run: sudo install -d -m 0755 -g 0 -o 0 ./iso/arch/x86_64/
     - run: >
-        sudo mksquashfs ./fs/ ./iso/arch/x86_64/airootfs.sfs -noappend
+        sudo mksquashfs ./fs/ ./iso/arch/x86_64/airootfs.sfs
+        -noappend
         -comp xz -Xbcj x86 -b 1M -Xdict-size 1M
+        -all-time 0
     - run: sudo umount ./fs/
-    - run: sha512sum airootfs.sfs | sudo tee ./iso/arch/x86_64/airootfs.sfs.sha512
+    - run: |
+        cd ./iso/arch/x86_64/
+        sha512sum airootfs.sfs | sudo tee airootfs.sha512
 
     - run: >
         xorriso
         -no_rc
         -as mkisofs -iso-level 3 -full-iso9660-filenames -joliet -joliet-long
         -rational-rock
-        -volid "XNUK_ARCH_DICK"
+        -volid "${ARCHISO_LABEL}"
         -appid "Xnuk Shuman Dick"
         -publisher "Xnuk Shuman"
         -partition_offset 16
