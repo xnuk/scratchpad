@@ -6,6 +6,7 @@ jobs:
   tt:
     runs-on: ubuntu-latest
     steps:
+    - run: sudo apt install mtools
     - run: type curl tar install mmd mcopy mksquashfs xorriso node zstd
     - uses: actions/checkout@v4
     - run: >
