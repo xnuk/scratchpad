@@ -82,7 +82,7 @@ jobs:
         sudo mksquashfs ./fs/ ./iso/arch/x86_64/airootfs.sfs -noappend
         -comp xz -Xbcj x86 -b 1M -Xdict-size 1M
     - run: sudo umount ./fs/
-    - run: sha512sum airootfs.sfs > ./iso/arch/x86_64/airootfs.sfs.sha512
+    - run: sha512sum airootfs.sfs | sudo tee ./iso/arch/x86_64/airootfs.sfs.sha512
 
     - run: >
         xorriso
