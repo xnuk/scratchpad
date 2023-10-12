@@ -36,22 +36,30 @@ jobs:
         sudo chmod -R 750 ./fs/root/ &&
         sudo chmod -R 755 ./fs/usr/bin/lwm &&
         sudo install -d -m 0755 -g 0 -o 0 ./fs/efi
-    - run: |
-        set -euvf
-        _chroot() {
-          sudo ./fs/bin/arch-chroot ./fs/ "$@"
-        }
 
-        sudo install -m 0644 -g 0 -o 0 \
-          pacman.conf ./fs/etc/pacman.conf
+    - run: >
+        echo 'sudo ./fs/bin/arch-chroot ./fs/ "$@"' > ./chroot &&
+        chmod +x ./chroot
+    - run: >
+        sudo install -m 0644 -g 0 -o 0
+        pacman.conf ./fs/etc/pacman.conf
+    - run: ./chroot pacman-key --init
+    - run: ./chroot pacman-key --populate
+    - run: ./chroot pacman -Syu --noconfirm $(grep -Ev '^(#|$)' packages.x86_64)
+    - run: >
+        sudo install -m 0644 -g 0 -o 0
+        airootfs/etc/pacman.conf ./fs/etc/pacman.conf
 
-        _chroot pacman-key --init
-        _chroot pacman-key --populate
-        _chroot pacman -Syu --noconfirm $(grep -Ev '^(#|$)' packages.x86_64)
+    - name: cleanup
+      run: |
+        ./chroot rm -r \
+          /boot \
+          /var/lib/pacman \
+          /var/cache/pacman/pkg \
+          /var/log \
+          /var/tmp \
+        ./chroot fd . / -e pacnew -e pacsave -e pacorig -X rm
 
-        sudo install -m 0644 -g 0 -o 0 \
-          airootfs/etc/pacman.conf ./fs/etc/pacman.conf
-    - run: sudo find ./fs/boot/
     - run: sudo tar -caf root.tar.zst ./fs/
     - run: sudo umount ./fs/
     - run: |
