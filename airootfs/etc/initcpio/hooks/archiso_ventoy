@@ -1,0 +1,27 @@
+#!/usr/bin/ash
+# shellcheck shell=ash enable=all
+
+run_hook() {
+    export mount_handler="archiso_ventoy_mount_handler"
+}
+
+archiso_ventoy_mount_handler() {
+    local newroot="${1}"
+
+    msg ":: Finding Ventoy device"
+    if vtoydump -L > /tmp/iso.table; then
+        dmsetup create ventoy /tmp/iso.table --readonly
+        export archisodevice=/dev/mapper/ventoy
+    else
+        echo "WARN: Failed to find Ventoy device"
+    fi
+
+    archiso_mount_handler "${newroot}"
+
+    # shellcheck disable=SC2154
+    # copytoram
+    if [ "${copytoram}" = "y" ]; then
+        umount /dev/mapper/ventoy
+    fi
+
+}

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash enable=all
+
+build() {
+    add_runscript
+
+    add_binary vtoydump
+    add_binary dmsetup
+}
