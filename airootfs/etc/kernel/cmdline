@@ -1,1 +1,1 @@
-archisobasedir=%INSTALL_DIR% archisodevice=UUID=%ARCHISO_UUID% img_label=%ARCHISO_LABEL%
+archisobasedir=%INSTALL_DIR% archisodevice=UUID=%ARCHISO_UUID% img_label=%ARCHISO_LABEL% copytoram=y
