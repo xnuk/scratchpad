@@ -30,5 +30,5 @@ Do not subvolume /etc, since /etc/fstab is there.
 pacstrap -K /mnt base base-devel linux amd-ucode intel-ucode kakoune iwd fish dash
 
 genfstab -U > /mnt/etc/fstab
-cp {/mnt,}/etc/pacman.conf
-cp {/mnt,}/etc/pacman.d/seoul-mirrorlist
+cp {,/mnt}/etc/pacman.conf
+cp {,/mnt}/etc/pacman.d/seoul-mirrorlist
