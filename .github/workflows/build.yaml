@@ -105,6 +105,7 @@ jobs:
           /var/log \
           /var/tmp
         ./chroot fd . / -e pacnew -e pacsave -e pacorig -X rm
+        ./chroot mkdir /var/lib/pacman
 
     - run: sudo install -d -m 0755 -g 0 -o 0 ./iso/arch/x86_64/
     - run: >
