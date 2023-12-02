@@ -3,6 +3,7 @@ archlinux-keyring
 amd-ucode
 intel-ucode
 linux
+linux-firmware
 
 # virutal idol
 qemu-guest-agent
