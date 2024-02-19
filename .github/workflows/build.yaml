@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-2022]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
@@ -22,7 +22,7 @@ jobs:
     - run: cargo build --release
     - uses: actions/upload-artifact@v4
       with:
-        name: filter-ffxiv-log-${{ runner.os }}
+        name: filter-ffxiv-log-${{ matrix.os }}
         path: target/release/filter-ffxiv-log
         if-no-files-found: error
         compression-level: 9
