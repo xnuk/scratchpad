@@ -1,0 +1,25 @@
+on:
+  push:
+    branches: [ filter-ffxiv-log ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  filter-ffxiv-log:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+        key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-r1
+    - run: cargo build --release
+    - uses: actions/upload-artifact@v4
+      with:
+        name: filter-ffxiv-log
+        path: target/release/filter-ffxiv-log
+        if-no-files-found: error
+        compression-level: 9
