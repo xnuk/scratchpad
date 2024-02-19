@@ -23,6 +23,6 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: filter-ffxiv-log-${{ matrix.os }}
-        path: target/release/filter-ffxiv-log
+        path: target/release/filter-ffxiv-log${{ startsWith('windows', matrix.os) && '.exe' || '' }}
         if-no-files-found: error
         compression-level: 9
