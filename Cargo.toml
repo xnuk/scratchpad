@@ -1,0 +1,17 @@
+[package]
+name = 'chatgpt'
+version = '0.1.0'
+edition = '2021'
+
+[dependencies]
+anyhow = '1'
+ureq = '2.9.7'
+serde_json = '1.0.120'
+
+[[bin]]
+name = 'chatgpt'
+path = 'main.rs'
+
+[profile.release]
+lto = true
+strip = true
