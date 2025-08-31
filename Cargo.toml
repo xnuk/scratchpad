@@ -1,12 +1,12 @@
 [package]
 name = 'chatgpt'
 version = '0.1.0'
-edition = '2021'
+edition = '2024'
 
 [dependencies]
 anyhow = '1'
-ureq = '2.9.7'
-serde_json = '1.0.120'
+ureq = '3.1.0'
+serde_json = '1.0.143'
 
 [[bin]]
 name = 'chatgpt'

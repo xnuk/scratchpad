@@ -5,6 +5,31 @@ use std::io::{self, BufRead, Write};
 
 use serde_json::value::Value;
 
+trait Keyable {
+	fn get(value: &Value, key: Self) -> Option<&Value>;
+}
+
+impl Keyable for usize {
+	fn get(value: &Value, key: Self) -> Option<&Value> {
+		value.as_array()?.get(key)
+	}
+}
+
+impl Keyable for &str {
+	fn get(value: &Value, key: Self) -> Option<&Value> {
+		value.as_object()?.get(key)
+	}
+}
+
+macro_rules! query {
+	($value:expr, [$($key:expr),+ $(,)?]) => {
+		Some($value).and_then(|v| {
+			$( let v = Keyable::get(v, $key)?; )+
+			Some(v)
+		})
+	};
+}
+
 const ENDPOINT: &str = "https://api.openai.com/v1/chat/completions";
 
 struct Config {
@@ -16,29 +41,11 @@ struct Config {
 }
 
 fn get_nonstreaming(value: &Value) -> Option<&str> {
-	value
-		.as_object()?
-		.get("choices")?
-		.as_array()?
-		.first()?
-		.as_object()?
-		.get("message")?
-		.as_object()?
-		.get("content")?
-		.as_str()
+	query!(value, ["choices", 0, "message", "content"])?.as_str()
 }
 
 fn get_streaming(value: &Value) -> Option<&str> {
-	value
-		.as_object()?
-		.get("choices")?
-		.as_array()?
-		.first()?
-		.as_object()?
-		.get("delta")?
-		.as_object()?
-		.get("content")?
-		.as_str()
+	query!(value, ["choices", 0, "delta", "content"])?.as_str()
 }
 
 fn main() -> anyhow::Result<()> {
@@ -49,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
 	let config = Config {
 		max_token: 300,
-		model: "gpt-4o".into(),
+		model: "gpt-5-nano".into(),
 		system_message: "Answer short as possible, but helpful.".into(),
 		stream: true,
 		api_key: env::var("OPENAI_API_KEY")
@@ -66,16 +73,37 @@ fn main() -> anyhow::Result<()> {
 		"stream": config.stream,
 	}))?;
 
-	let response = ureq::post(ENDPOINT)
-		.set("content-type", "application/json")
-		.set("authorization", &format!("Bearer {}", config.api_key))
-		.send_string(&body)?
-		.into_reader();
+	let agent: ureq::Agent = ureq::Agent::config_builder()
+		.https_only(true)
+		.http_status_as_error(false)
+		.build()
+		.into();
+
+	let mut response = agent
+		.post(ENDPOINT)
+		.header("content-type", "application/json")
+		.header("authorization", &format!("Bearer {}", config.api_key))
+		.send(&body)?;
+	let status_code = response.status();
+	if !status_code.is_success() {
+		let body = response.body_mut().read_to_string().unwrap_or_default();
+		let message = serde_json::from_str(&body)
+			.ok()
+			.and_then(|v: Value| {
+				let z = query!(&v, ["error", "message"])?.as_str()?;
+				Some(z.to_string())
+			})
+			.unwrap_or(body);
+
+		eprintln!("{message}");
+		return Err(ureq::Error::StatusCode(status_code.as_u16()).into());
+	}
+	let body = response.body_mut().as_reader();
 
 	if config.stream {
 		let mut stdout = io::stdout();
 
-		let mut buf = io::BufReader::new(response);
+		let mut buf = io::BufReader::new(body);
 		let mut data = String::new();
 		let mut line = String::new();
 
@@ -105,7 +133,7 @@ fn main() -> anyhow::Result<()> {
 		stdout.flush()?;
 		Ok(())
 	} else {
-		let body = serde_json::from_reader(response)?;
+		let body = serde_json::from_reader(body)?;
 		if let Some(response) = get_nonstreaming(&body) {
 			println!("{response}");
 			Ok(())
